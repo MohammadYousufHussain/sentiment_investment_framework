@@ -1,0 +1,15 @@
+.git
+.env
+.env.example
+data/
+webapp/frontend/node_modules
+webapp/frontend/dist
+webapp/dist
+**/__pycache__
+**/*.pyc
+.DS_Store
+*.pptx
+architecture/
+source_eval/
+scripts/
+Sentinel_Pipeline_Architecture.pptx

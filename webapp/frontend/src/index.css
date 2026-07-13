@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+
+  /* Chart chrome & ink -- dark surface, from the validated reference palette */
+  --color-page: #0a0a0a;
+  --color-surface: #131313;
+  --color-panel: #1a1a19;
+  --color-panel-hover: #202020;
+  --color-hairline: #2c2c2a;
+  --color-ink: #ffffff;
+  --color-ink-secondary: #c3c2b7;
+  --color-ink-muted: #898781;
+
+  /* Categorical (fixed order -- never reassigned per-render) */
+  --color-series-1: #3987e5; /* blue */
+  --color-series-2: #199e70; /* aqua */
+  --color-series-3: #c98500; /* yellow */
+  --color-series-4: #008300; /* green */
+  --color-series-5: #9085e9; /* violet */
+
+  /* Status (reserved, never reused as series color) */
+  --color-good: #0ca30c;
+  --color-warning: #fab219;
+  --color-serious: #ec835a;
+  --color-critical: #e66767;
+}
+
+body {
+  margin: 0;
+  background: var(--color-page);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-series-1) 35%, transparent);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes node-pulse {
+  0%, 100% { opacity: 0.45; transform: scale(0.92); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+@keyframes flow-down {
+  0% { opacity: 0; transform: translateY(-6px); }
+  15%, 40% { opacity: 1; transform: translateY(0); }
+  70% { opacity: 0; transform: translateY(14px); }
+  100% { opacity: 0; transform: translateY(14px); }
+}
+
+@keyframes flow-right {
+  0% { opacity: 0; transform: translateX(-6px); }
+  15%, 40% { opacity: 1; transform: translateX(0); }
+  70% { opacity: 0; transform: translateX(14px); }
+  100% { opacity: 0; transform: translateX(14px); }
+}
+
+@keyframes step-glow {
+  0%, 100% { background-color: var(--color-panel); border-color: var(--color-hairline); }
+  50% { background-color: color-mix(in srgb, var(--color-series-1) 20%, var(--color-panel)); border-color: var(--color-series-1); }
+}
+
+@keyframes chip-cycle {
+  0%, 8% { opacity: 0; transform: translateY(4px) scale(0.92); }
+  16%, 78% { opacity: 1; transform: translateY(0) scale(1); }
+  88%, 100% { opacity: 0; transform: translateY(-4px) scale(0.92); }
+}
+
+@keyframes engine-scan {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-series-1) 35%, transparent); }
+  50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-series-1) 0%, transparent); }
+}

@@ -1,0 +1,16 @@
+.env
+__pycache__/
+*.pyc
+.DS_Store
+*.db
+
+# Frontend build artifacts -- rebuilt by `npm run build` / the Docker
+# frontend-build stage, not meant to live in git history.
+webapp/frontend/node_modules/
+webapp/frontend/dist/
+webapp/dist/
+
+# Editors / OS cruft
+.vscode/
+.idea/
+.claude/

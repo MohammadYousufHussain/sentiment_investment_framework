@@ -1,0 +1,21 @@
+requests
+feedparser
+python-dotenv
+yfinance
+flask
+trafilatura
+beautifulsoup4
+googlenewsdecoder
+numpy
+pandas
+pydantic
+rapidfuzz
+spacy
+transformers
+google-genai
+gunicorn
+
+# torch is intentionally NOT listed here -- the default PyPI wheel pulls in
+# CUDA dependencies that roughly triple image size and are useless on a CPU
+# host. Install it separately with the CPU-only index (see Dockerfile):
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
