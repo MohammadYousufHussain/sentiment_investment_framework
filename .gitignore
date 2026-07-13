@@ -14,3 +14,7 @@ webapp/dist/
 .vscode/
 .idea/
 .claude/
+
+# Presentation/document deliverables -- not part of the app or its docs
+*.pdf
+*.pptx
