@@ -32,6 +32,13 @@ class Database:
     def __init__(self, db_path: Path | str = DEFAULT_DB_PATH):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        # init_schema() is entirely CREATE TABLE IF NOT EXISTS + guarded
+        # column migrations (see below), so it's safe and cheap to run every
+        # time rather than requiring a separate manual `scripts/init_db.py`
+        # step -- which a fresh deployment (empty volume, brand new db file)
+        # would otherwise silently need before any route touching the DB
+        # works at all.
+        self.init_schema()
 
     @contextmanager
     def connect(self):
