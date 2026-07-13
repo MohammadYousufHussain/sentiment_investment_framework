@@ -9,7 +9,8 @@ Stage B (ticker-scoped ingestion) → Sentiment analysis (per-article, per-ticke
                     Time series & signal detection (this build)
                                             │
                                             v
-                    Fundamentals / quantitative validation (not yet built)
+     Fundamentals / quantitative validation, Integrated Scoring,
+     Comparables, Investment Thesis (all built -- see architecture/README.md)
 ```
 
 Consumes `article_sentiment` (built in the sentiment-analysis phase) plus
@@ -111,10 +112,26 @@ flag. A "sharp inflection" on two 3-article windows and one on two 40-article
 windows are not equally trustworthy claims, and the output says so rather
 than presenting them identically.
 
-## 7. What's not built yet
+## 7. Since this doc was written
 
-- Fundamentals / quantitative validation (Part 2 of the case study) —
-  consuming the shortlist this phase produces.
-- Persisting computed windows/signals — currently recomputed on every
-  request (fast enough at this data volume; would need caching or a
-  materialized table if the ticker/article count grows substantially).
+**Built:** Fundamentals/quantitative validation, and everything downstream
+of it, consuming this phase's output extensively:
+
+- The **Sentiment factor** in the Integrated Scoring composite is a
+  recency-weighted blend of exactly the Recent/Mid windows this doc defines
+  (see `architecture/integrated_scoring.md`).
+- **Comparables** and the **Investment Thesis** stock pitch both cite the
+  detected signals (sharp inflection, sustained positivity/negativity,
+  turnaround) directly in their LLM prompts as grounded evidence — see
+  `architecture/comparables.md` and `architecture/investment_thesis.md`.
+- The signals/windows themselves are deliberately **excluded** from the
+  Integrated Scoring composite math, on purpose — see
+  `architecture/integrated_scoring.md`'s note on why a noisy, single-day-news
+  -driven signal doesn't belong in a value meant to be stable enough to rank
+  companies against each other. They stay a qualitative overlay on the
+  Sentiment & News tab instead.
+
+**Still not built:** persisting computed windows/signals — still recomputed
+on every request (§1's "nothing new is persisted" principle, still accurate;
+fast enough at current data volume, would need caching or a materialized
+table if ticker/article count grows substantially).

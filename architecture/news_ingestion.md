@@ -28,19 +28,29 @@ what makes the system explainable and lets each phase be tested independently:
   Stage A articles back out of the database and identifies which companies they
   mention via a spaCy+fuzzy / LLM ensemble against an SEC EDGAR reference table,
   surfacing a de-duped candidate ticker list the user reviews and prunes before
-  Stage B runs. (This superseded the originally-sketched FinBERT/S&P-500/
-  `article_tickers`+`sentiment_scores` design in the diagram below — the NER doc
-  is the authoritative design for this phase; per-article sentiment scoring
-  itself is not yet built.)
+  Stage B runs. This superseded the originally-sketched FinBERT/S&P-500/
+  `article_tickers`+`sentiment_scores` design in the diagram below (§4 has the
+  detail on what was actually built instead).
 - **Stage B** (built — §8 below) is *ticker-driven*: for exactly the tickers the
-  user kept selected from the NER candidate list, it pulls deeper, ticker-scoped
-  news history to build a robust enough time series for signal detection.
-- **Time series / signal detection** (not yet built) aggregates per-ticker daily
-  sentiment and flags sharp inflections, sustained positivity, or negative→positive
-  turnarounds — this is what actually produces the shortlist of 5 candidates.
+  user kept selected from the NER candidate list (or added directly by ticker --
+  see NER doc §6a's manual lookup path, which skips Stage A/NER entirely), it
+  pulls deeper, ticker-scoped news history.
+- **Per-article, per-ticker sentiment scoring** (built — see
+  `architecture/sentiment_analysis.md`) runs on every Stage B article: a FinBERT
+  + LLM ensemble, relevance-weighted so an incidental mention doesn't move the
+  score.
+- **Time series / signal detection** (built — see
+  `architecture/time_series_signals.md`) aggregates that per-article sentiment
+  into recent/mid/historical windows and flags sharp inflections, sustained
+  positivity, or negative→positive turnarounds.
+- **Downstream of all of that**: quantitative valuation, an integrated
+  composite score, peer comparables, and an LLM-grounded investment thesis are
+  also built — see `architecture/README.md` for the full document index, this
+  file only covers ingestion.
 
-**This document covers Stage A, Stage B, and the database.** NER/entity
-identification is documented separately in `architecture/name_entity_recognition.md`.
+**This document covers Stage A, Stage B, and the database.** Everything after
+ingestion (NER, sentiment, signals, scoring, comparables, thesis) is
+documented in its own file — see `architecture/README.md`.
 
 ## 2. Stage A source matrix
 
@@ -127,18 +137,22 @@ evaluation).
 | `articles_new` | INTEGER | Count actually inserted (post-dedup) |
 | `error_message` | TEXT, nullable | |
 
-### Deferred to the NLP-phase build (not created yet, by design)
+### What actually got built instead of `article_tickers`/`sentiment_scores`
 
-- **`article_tickers`** — one row per (article, ticker mention), populated either from
-  a source's native tagging (Alpha Vantage, Yahoo Search) or from NER + fuzzy-matching
-  against the S&P 500 reference list for sources that don't tag tickers natively
-  (Google News RSS, NewsAPI).
-- **`sentiment_scores`** — one row per article holding our own FinBERT
-  label/score, kept distinct from `provider_sentiment_*` on `articles` so the two can
-  be compared rather than one silently overwriting the other.
+The two tables sketched here at the time this doc was written were never
+built as named — once the NER and sentiment phases were actually designed,
+each needed more than a single flat table (raw per-method detections,
+computed on read, not blended at write time — see the "why" in each doc):
 
-Both will FK into `articles.id` — adding them later is a pure addition, not a
-migration of existing data.
+- Ticker identification became **`article_entities`** + **`article_entity_runs`**
+  (one row per article/ticker/method, an idempotency-tracking table) — see
+  `architecture/name_entity_recognition.md` §8.
+- Sentiment scoring became **`article_sentiment`** + **`article_sentiment_runs`**,
+  the same shape for the same reason — see `architecture/sentiment_analysis.md`
+  §6.
+
+Both do still FK into `articles.id` as originally planned, and were added as
+pure additions (`CREATE TABLE IF NOT EXISTS`), no migration of existing data.
 
 ## 5. Deduplication
 
@@ -169,8 +183,11 @@ rather than crashing the pipeline for one keyword.
 ## 7. Configuration
 
 - **Secrets** (`NEWSAPI_KEY`, `ALPHA_VANTAGE_API_KEY`, `BENZINGA_API_KEY`,
-  `GOOGLE_API_KEY`) live in `.env`, loaded via `python-dotenv`, and are
-  gitignored — never hardcoded or passed on the command line.
+  `GOOGLE_API_KEY`) live in `.env` locally, loaded via `python-dotenv`, and
+  are gitignored — never hardcoded or passed on the command line. In a
+  deployment there's no `.env` file at all; the same variable names are set
+  directly as host environment variables instead, which `load_dotenv()`
+  falls through to transparently (see `DEPLOYMENT.md` at the repo root).
 - **S&P 500 constituents** (`config/sp500_constituents.csv`) were fetched early
   on but superseded by SEC EDGAR's `company_tickers.json` for entity
   resolution — see `architecture/name_entity_recognition.md` §6 for why (Stage
@@ -225,9 +242,17 @@ legitimately returns 0 for some tickers at some points in time; the other four
 Stage B sources cover the gap when it happens, so no single source failure
 blocks Stage B for a given company.
 
-### What's not built yet
+### Since this doc was written
 
-The webapp's "Proceed to Stage B" button currently only surfaces the selected
-ticker list (see `CompanyEntitiesCard`) — wiring it to actually call
-`run_stage_b` (mirroring how Stage A's SSE streaming search works) is the
-natural next step, not yet done.
+The webapp's "Proceed to Stage B" button (`CompanyEntitiesCard.jsx`) is fully
+wired: it posts the selected tickers to `POST /api/stage-b/trigger`, which
+starts `run_stage_b_iter` per ticker on a background thread (`webapp/app.py`,
+`_run_stage_b_background`) rather than blocking the request — status is
+polled via `GET /api/stage-b/status` and shown live on the Companies page.
+Unlike Stage A's search, this isn't SSE-streamed to the triggering request;
+it's fire-and-forget with separate polling, since Stage B runs across
+multiple tickers and the user may navigate away before it finishes.
+
+There's a second entry point into Stage B that bypasses Stage A/NER
+entirely: the "add a company" search box on the Companies page, for a user
+who already knows the ticker they want (see NER doc §6a).
