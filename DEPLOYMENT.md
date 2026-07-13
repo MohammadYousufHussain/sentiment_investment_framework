@@ -29,21 +29,46 @@ build stage in the `Dockerfile`) — no separate frontend service needed.
    `Dockerfile` at the repo root and builds from it — no `railway.toml`
    needed unless you want to override something).
 
-2. **Attach a volume** to the service: Railway dashboard → your service →
-   Settings → Volumes → add a volume, mount path `/data`.
+2. **Attach a volume** to the service *first* — this determines what
+   `DB_PATH` is allowed to be in the next step. Service → Settings →
+   Volumes → Add Volume → Mount Path `/data`. Everything the app writes
+   inside `/data` survives redeploys; everything outside it (including the
+   rest of `/app`, which is the code from the image) is rebuilt from scratch
+   on every deploy.
 
-3. **Set environment variables** on the service (Settings → Variables):
+3. **Set environment variables** on the service (Settings → Variables — a
+   different tab from Volumes):
 
    | Variable | Value |
    |---|---|
-   | `DB_PATH` | `/data/sentinel.db` (inside the mounted volume — **not** `/app/data/...`, that's the container's ephemeral filesystem) |
+   | `DB_PATH` | `/data/sentinel.db` |
    | `NEWSAPI_KEY` | your key |
    | `ALPHA_VANTAGE_API_KEY` | your key |
    | `BENZINGA_API_KEY` | your key |
    | `GOOGLE_API_KEY` | your Gemini key |
 
+   Two easy mistakes here, both silent (no error, just data loss on the
+   *next* deploy):
+   - `DB_PATH` must be a **file** inside the mount, not the bare directory
+     -- `/data/sentinel.db`, not `/data`. `Database.__init__` auto-creates
+     it with the schema already applied on first use (see
+     `src/db/database.py`), so there's no manual init step.
+   - The directory in `DB_PATH` must match the volume's mount path from
+     step 2 exactly. Setting `DB_PATH=/app/data/sentinel.db` (matching the
+     Dockerfile's local-dev default) lands the file on the ephemeral
+     filesystem instead -- the app works fine until the next deploy wipes
+     it, with nothing telling you why.
+
    Railway injects `PORT` automatically — the `Dockerfile`'s `CMD` already
    reads it (`--bind 0.0.0.0:${PORT:-8000}`), nothing to set there.
+
+   **Verify persistence actually works, don't just assume it from the
+   config**: after deploying, add a company or run a search so something
+   real gets written, confirm it via `GET /api/companies` on your Railway
+   URL, then trigger a redeploy (Settings → Redeploy, or push a trivial
+   commit) and check `/api/companies` again. Same data still there means
+   it's wired correctly; empty again means `DB_PATH` isn't actually
+   pointing inside the mounted volume.
 
 4. **Deploy.** Railway builds the image and starts the container. First
    build is slow (torch + the spaCy transformer model are large downloads,
