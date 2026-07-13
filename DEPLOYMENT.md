@@ -37,7 +37,12 @@ build stage in the `Dockerfile`) — no separate frontend service needed.
    on every deploy.
 
 3. **Set environment variables** on the service (Settings → Variables — a
-   different tab from Volumes):
+   different tab from Volumes). Use **Service Variables**, not the
+   project-level **Shared Variables** — Shared Variables exist for values
+   multiple *different services* in one project need; this is a single
+   service (everything runs in one Flask process), so there's nothing to
+   share with, and Service Variables keeps secrets scoped to only the thing
+   that uses them:
 
    | Variable | Value |
    |---|---|
