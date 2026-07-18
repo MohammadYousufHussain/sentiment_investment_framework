@@ -1,64 +1,99 @@
-export async function getFilters() {
-  const res = await fetch('/api/filters')
-  if (!res.ok) throw new Error(`getFilters failed: ${res.status}`)
+// Shared fetch wrapper. On a 401 from any data endpoint it broadcasts
+// 'auth:unauthorized' so AuthProvider (lib/auth.jsx) can drop the session and
+// the router can bounce to /login -- individual pages don't handle auth.
+async function request(name, path, options = undefined) {
+  const res = await fetch(path, options)
+  if (res.status === 401 && !path.startsWith('/api/auth/')) {
+    window.dispatchEvent(new Event('auth:unauthorized'))
+  }
+  if (!res.ok) throw new Error(`${name} failed: ${res.status}`)
   return res.json()
 }
 
-export async function getArticles(params = {}) {
+function post(name, path, body) {
+  return request(name, path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+// -- Auth -------------------------------------------------------------------
+
+export async function getCurrentUser() {
+  const res = await fetch('/api/auth/me')
+  if (res.status === 401) return null
+  if (!res.ok) throw new Error(`getCurrentUser failed: ${res.status}`)
+  return (await res.json()).user
+}
+
+export async function authSignup({ name, email, password }) {
+  const res = await fetch('/api/auth/signup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email, password }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || `Signup failed: ${res.status}`)
+  return data.user
+}
+
+export async function authLogin({ email, password }) {
+  const res = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || `Login failed: ${res.status}`)
+  return data.user
+}
+
+export async function authLogout() {
+  await fetch('/api/auth/logout', { method: 'POST' })
+}
+
+// -- Data endpoints ---------------------------------------------------------
+
+export function getFilters() {
+  return request('getFilters', '/api/filters')
+}
+
+export function getArticles(params = {}) {
   const qs = new URLSearchParams(
     Object.fromEntries(Object.entries(params).filter(([, v]) => v !== '' && v != null))
   )
-  const res = await fetch(`/api/articles?${qs.toString()}`)
-  if (!res.ok) throw new Error(`getArticles failed: ${res.status}`)
-  return res.json()
+  return request('getArticles', `/api/articles?${qs.toString()}`)
 }
 
-export async function getEntities(query) {
+export function getEntities(query) {
   const qs = new URLSearchParams({ query })
-  const res = await fetch(`/api/entities?${qs.toString()}`)
-  if (!res.ok) throw new Error(`getEntities failed: ${res.status}`)
-  return res.json()
+  return request('getEntities', `/api/entities?${qs.toString()}`)
 }
 
-export async function searchCompanies(query) {
+export function searchCompanies(query) {
   const qs = new URLSearchParams({ q: query })
-  const res = await fetch(`/api/company-search?${qs.toString()}`)
-  if (!res.ok) throw new Error(`searchCompanies failed: ${res.status}`)
-  return res.json()
+  return request('searchCompanies', `/api/company-search?${qs.toString()}`)
 }
 
-export async function triggerStageB(tickers) {
-  const res = await fetch('/api/stage-b/trigger', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tickers }),
-  })
-  if (!res.ok) throw new Error(`triggerStageB failed: ${res.status}`)
-  return res.json()
+export function triggerStageB(tickers) {
+  return post('triggerStageB', '/api/stage-b/trigger', { tickers })
 }
 
-export async function getStageBStatus() {
-  const res = await fetch('/api/stage-b/status')
-  if (!res.ok) throw new Error(`getStageBStatus failed: ${res.status}`)
-  return res.json()
+export function getStageBStatus() {
+  return request('getStageBStatus', '/api/stage-b/status')
 }
 
-export async function getCompanies() {
-  const res = await fetch('/api/companies')
-  if (!res.ok) throw new Error(`getCompanies failed: ${res.status}`)
-  return res.json()
+export function getCompanies() {
+  return request('getCompanies', '/api/companies')
 }
 
-export async function getCompanyDetail(ticker) {
-  const res = await fetch(`/api/companies/${encodeURIComponent(ticker)}`)
-  if (!res.ok) throw new Error(`getCompanyDetail failed: ${res.status}`)
-  return res.json()
+export function getCompanyDetail(ticker) {
+  return request('getCompanyDetail', `/api/companies/${encodeURIComponent(ticker)}`)
 }
 
-export async function getCompanySentiment(ticker) {
-  const res = await fetch(`/api/companies/${encodeURIComponent(ticker)}/sentiment`)
-  if (!res.ok) throw new Error(`getCompanySentiment failed: ${res.status}`)
-  return res.json()
+export function getCompanySentiment(ticker) {
+  return request('getCompanySentiment', `/api/companies/${encodeURIComponent(ticker)}/sentiment`)
 }
 
 /**
@@ -80,63 +115,43 @@ export function streamCompanySentiment(ticker, { onEvent, onError } = {}) {
   return source
 }
 
-export async function getCompanyValuation(ticker, period = 'annual') {
+export function getCompanyValuation(ticker, period = 'annual') {
   const qs = new URLSearchParams({ period })
-  const res = await fetch(`/api/companies/${encodeURIComponent(ticker)}/valuation?${qs.toString()}`)
-  if (!res.ok) throw new Error(`getCompanyValuation failed: ${res.status}`)
-  return res.json()
+  return request('getCompanyValuation', `/api/companies/${encodeURIComponent(ticker)}/valuation?${qs.toString()}`)
 }
 
-export async function getCompanyQisFactors(ticker) {
-  const res = await fetch(`/api/companies/${encodeURIComponent(ticker)}/qis-factors`)
-  if (!res.ok) throw new Error(`getCompanyQisFactors failed: ${res.status}`)
-  return res.json()
+export function getCompanyQisFactors(ticker) {
+  return request('getCompanyQisFactors', `/api/companies/${encodeURIComponent(ticker)}/qis-factors`)
 }
 
-export async function getCompanyHistoricalFactors(ticker) {
-  const res = await fetch(`/api/companies/${encodeURIComponent(ticker)}/historical-factors`)
-  if (!res.ok) throw new Error(`getCompanyHistoricalFactors failed: ${res.status}`)
-  return res.json()
+export function getCompanyHistoricalFactors(ticker) {
+  return request('getCompanyHistoricalFactors', `/api/companies/${encodeURIComponent(ticker)}/historical-factors`)
 }
 
-export async function getCompanySignals(ticker) {
-  const res = await fetch(`/api/companies/${encodeURIComponent(ticker)}/signals`)
-  if (!res.ok) throw new Error(`getCompanySignals failed: ${res.status}`)
-  return res.json()
+export function getCompanySignals(ticker) {
+  return request('getCompanySignals', `/api/companies/${encodeURIComponent(ticker)}/signals`)
 }
 
-export async function getCompanyPeers(ticker, { refresh = false } = {}) {
+export function getCompanyPeers(ticker, { refresh = false } = {}) {
   const qs = refresh ? '?refresh=true' : ''
-  const res = await fetch(`/api/companies/${encodeURIComponent(ticker)}/peers${qs}`)
-  if (!res.ok) throw new Error(`getCompanyPeers failed: ${res.status}`)
-  return res.json()
+  return request('getCompanyPeers', `/api/companies/${encodeURIComponent(ticker)}/peers${qs}`)
 }
 
-export async function getComparablesRationale(ticker, peers) {
-  const res = await fetch(`/api/companies/${encodeURIComponent(ticker)}/comparables-rationale`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ peers }),
-  })
-  if (!res.ok) throw new Error(`getComparablesRationale failed: ${res.status}`)
-  return res.json()
+export function getComparablesRationale(ticker, peers) {
+  return post('getComparablesRationale', `/api/companies/${encodeURIComponent(ticker)}/comparables-rationale`, { peers })
 }
 
-export async function getInvestmentThesis(ticker, { refresh = false } = {}) {
+export function getInvestmentThesis(ticker, { refresh = false } = {}) {
   const qs = refresh ? '?refresh=true' : ''
-  const res = await fetch(`/api/companies/${encodeURIComponent(ticker)}/investment-thesis${qs}`)
-  if (!res.ok) throw new Error(`getInvestmentThesis failed: ${res.status}`)
-  return res.json()
+  return request('getInvestmentThesis', `/api/companies/${encodeURIComponent(ticker)}/investment-thesis${qs}`)
 }
 
-export async function getStockPitch(ticker, stance, { refresh = false } = {}) {
+export function getStockPitch(ticker, stance, { refresh = false } = {}) {
   const params = new URLSearchParams()
   if (stance) params.set('stance', stance)
   if (refresh) params.set('refresh', 'true')
   const qs = params.toString() ? `?${params.toString()}` : ''
-  const res = await fetch(`/api/companies/${encodeURIComponent(ticker)}/stock-pitch${qs}`)
-  if (!res.ok) throw new Error(`getStockPitch failed: ${res.status}`)
-  return res.json()
+  return request('getStockPitch', `/api/companies/${encodeURIComponent(ticker)}/stock-pitch${qs}`)
 }
 
 /**

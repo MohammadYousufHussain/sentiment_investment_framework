@@ -14,14 +14,16 @@ If you're actively changing the frontend, run the Vite dev server instead
 (see frontend/vite.config.js) and gives you hot reload.
 """
 import json
+import os
 import sys
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from flask import Flask, Response, jsonify, request, send_from_directory, stream_with_context
+from flask import Flask, Response, jsonify, request, send_from_directory, session, stream_with_context
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from src.db.database import Database
 from src.ingestion.pipeline import STAGE_A_SOURCES, run_stage_a_iter, run_stage_b_iter
@@ -30,6 +32,19 @@ from src.ner.pipeline import run_entity_extraction
 DIST_DIR = Path(__file__).parent / "dist"
 
 app = Flask(__name__, static_folder=None)
+
+# Session cookies sign the logged-in user id. FLASK_SECRET_KEY must be set in
+# production (Railway Service Variable) or every deploy/restart with the dev
+# fallback invalidates existing sessions and makes cookies forgeable.
+app.secret_key = os.environ.get("FLASK_SECRET_KEY") or "dev-only-insecure-secret"
+if app.secret_key == "dev-only-insecure-secret":
+    print("WARNING: FLASK_SECRET_KEY not set -- using insecure dev fallback", file=sys.stderr)
+app.config.update(
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_HTTPONLY=True,
+    PERMANENT_SESSION_LIFETIME=timedelta(days=30),
+)
+
 db = Database()
 
 # Stage B can take minutes across several tickers, and the user should be
@@ -151,6 +166,88 @@ def compute_age_histogram(published_ats: list) -> dict:
             counts["30d+"] += 1
 
     return counts
+
+
+# -- Auth -------------------------------------------------------------------
+# Free accounts, email + password only. The SPA shell itself is served to
+# anyone (the landing/login pages live in it); every data endpoint under /api
+# except the auth ones requires a signed-in session.
+
+def _public_user(row):
+    return {"id": row["id"], "email": row["email"], "name": row["name"]}
+
+
+@app.before_request
+def require_login_for_api():
+    if not request.path.startswith("/api/") or request.path.startswith("/api/auth/"):
+        return None
+    if "user_id" not in session:
+        return jsonify({"error": "auth_required"}), 401
+    return None
+
+
+@app.route("/api/auth/signup", methods=["POST"])
+def auth_signup():
+    payload = request.get_json(silent=True) or {}
+    name = (payload.get("name") or "").strip()
+    email = (payload.get("email") or "").strip().lower()
+    password = payload.get("password") or ""
+
+    if not name or not email or "@" not in email:
+        return jsonify({"error": "A name and a valid email are required."}), 400
+    if len(password) < 8:
+        return jsonify({"error": "Password must be at least 8 characters."}), 400
+
+    with db.connect() as conn:
+        existing = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+        if existing:
+            return jsonify({"error": "An account with this email already exists."}), 409
+        cur = conn.execute(
+            "INSERT INTO users (email, name, password_hash) VALUES (?, ?, ?)",
+            # pbkdf2 rather than werkzeug's scrypt default -- macOS system
+            # Python builds lack hashlib.scrypt, and pbkdf2 hashes verify
+            # identically everywhere.
+            (email, name, generate_password_hash(password, method="pbkdf2:sha256")),
+        )
+        user = conn.execute("SELECT * FROM users WHERE id = ?", (cur.lastrowid,)).fetchone()
+
+    session.permanent = True
+    session["user_id"] = user["id"]
+    return jsonify({"user": _public_user(user)})
+
+
+@app.route("/api/auth/login", methods=["POST"])
+def auth_login():
+    payload = request.get_json(silent=True) or {}
+    email = (payload.get("email") or "").strip().lower()
+    password = payload.get("password") or ""
+
+    with db.connect() as conn:
+        user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+    if user is None or not check_password_hash(user["password_hash"], password):
+        return jsonify({"error": "Incorrect email or password."}), 401
+
+    session.permanent = True
+    session["user_id"] = user["id"]
+    return jsonify({"user": _public_user(user)})
+
+
+@app.route("/api/auth/logout", methods=["POST"])
+def auth_logout():
+    session.pop("user_id", None)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/auth/me")
+def auth_me():
+    if "user_id" not in session:
+        return jsonify({"error": "auth_required"}), 401
+    with db.connect() as conn:
+        user = conn.execute("SELECT * FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+    if user is None:
+        session.pop("user_id", None)
+        return jsonify({"error": "auth_required"}), 401
+    return jsonify({"user": _public_user(user)})
 
 
 @app.route("/api/filters")

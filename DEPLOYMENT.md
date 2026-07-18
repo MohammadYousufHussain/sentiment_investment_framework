@@ -118,8 +118,17 @@ mid-request the first time someone triggers Stage B ingestion or NER.
 ## Secrets hygiene
 
 `.env` is git-ignored and `.dockerignore`'d — it's never baked into the
-image. The four API keys above are the only secrets; set them as Railway
-variables, not in a committed file. `python-dotenv`'s `load_dotenv()` in
+image. The four API keys above plus `FLASK_SECRET_KEY` are the only
+secrets; set them as Railway variables, not in a committed file.
+`FLASK_SECRET_KEY` signs login session cookies — generate one with
+`python3 -c "import secrets; print(secrets.token_hex(32))"` and set it as
+a Service Variable; without it the app falls back to an insecure dev
+constant and logs a warning, and rotating it logs every user out.
+
+To serve the app at **sentix.ae**: Settings → Networking → Custom Domain,
+add `sentix.ae` (and `www.sentix.ae` if wanted), then create the CNAME
+record Railway shows at your DNS provider. Railway provisions TLS
+automatically once the record resolves. `python-dotenv`'s `load_dotenv()` in
 `src/config.py` is a no-op if there's no `.env` file present (which there
 won't be in the container), so this needs no code change to work — it just
 falls through to `os.environ`, which Railway populates from the variables

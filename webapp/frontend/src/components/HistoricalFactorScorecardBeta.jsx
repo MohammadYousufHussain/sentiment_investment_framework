@@ -466,7 +466,7 @@ export default function HistoricalFactorScorecardBeta({ loading, error, data }) 
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
         {FACTOR_ORDER.map((key) => (
           <FactorDetail
             key={key}

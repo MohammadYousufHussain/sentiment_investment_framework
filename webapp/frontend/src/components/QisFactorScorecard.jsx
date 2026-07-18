@@ -117,7 +117,7 @@ function MetricRow({ metricKey, metric }) {
           )}
 
           {horizons.length > 0 && (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {HORIZON_KEYS.map((h) =>
                 metric[h] ? (
                   <div key={h} className="border border-hairline rounded-md bg-surface px-2 py-1.5">

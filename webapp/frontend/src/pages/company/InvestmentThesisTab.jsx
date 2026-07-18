@@ -166,14 +166,14 @@ export default function InvestmentThesisTab() {
 
           <div className="mt-5">
             <p className="text-[10px] uppercase tracking-wide text-ink-muted mb-2">Thesis pillars</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {pitch.pillars?.map((p, i) => (
                 <PillarCard key={i} title={p.title} detail={p.detail} index={i} />
               ))}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-5 mt-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
             <div>
               <p className="text-[10px] uppercase tracking-wide text-critical mb-2">
                 Risks to this {pitch.recommendation.toLowerCase()} view

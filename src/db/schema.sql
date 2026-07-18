@@ -96,6 +96,16 @@ CREATE TABLE IF NOT EXISTS article_sentiment (
 CREATE INDEX IF NOT EXISTS idx_article_sentiment_article ON article_sentiment(article_id);
 CREATE INDEX IF NOT EXISTS idx_article_sentiment_ticker ON article_sentiment(ticker);
 
+-- Web app accounts (email/password, no billing). COLLATE NOCASE on email so
+-- signup/login can't create case-variant duplicates of the same address.
+CREATE TABLE IF NOT EXISTS users (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    email         TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    name          TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
 -- Same idempotency fix as article_entity_runs -- marks that scoring was
 -- attempted regardless of whether it succeeded, so a genuinely unscoreable
 -- article isn't re-processed (including LLM calls) on every re-run.

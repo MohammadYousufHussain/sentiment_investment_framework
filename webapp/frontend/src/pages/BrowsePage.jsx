@@ -54,7 +54,7 @@ export default function BrowsePage() {
   const displayedArticles = filteredArticleIds ? articles.filter((a) => filteredArticleIds.has(a.id)) : articles
 
   return (
-    <div className="max-w-7xl mx-auto px-8 py-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10">
       <header className="mb-6">
         <h1 className="text-xl font-semibold tracking-tight">Browse Stored Articles</h1>
         <p className="text-sm text-ink-secondary mt-1">

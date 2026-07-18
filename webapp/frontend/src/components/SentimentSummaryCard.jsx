@@ -127,7 +127,7 @@ export default function SentimentSummaryCard({ loading, error, data, progress })
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
         <StatTile label="Articles scored" value={summary.articles_scored} />
         <StatTile
           label="FinBERT ↔ LLM agree"

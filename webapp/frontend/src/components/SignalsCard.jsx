@@ -150,7 +150,7 @@ export default function SignalsCard({ loading, error, data }) {
       <SentimentScaleLegend />
 
       <p className="text-[10px] uppercase tracking-wide text-ink-muted mb-2">Time periods compared</p>
-      <div className="grid grid-cols-3 gap-2 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
         {['recent', 'mid', 'historical'].map((name) => (
           <WindowTile key={name} name={name} stats={windows[name]} />
         ))}

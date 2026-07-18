@@ -47,12 +47,12 @@ export default function CompanyLayout() {
   }, [ticker])
 
   if (loading) {
-    return <div className="max-w-7xl mx-auto px-8 py-10 text-sm text-ink-muted">Loading…</div>
+    return <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10 text-sm text-ink-muted">Loading…</div>
   }
 
   if (notFound && !detail) {
     return (
-      <div className="max-w-7xl mx-auto px-8 py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10">
         <p className="text-sm text-ink-muted">
           No Stage B data for {ticker} yet
           {job ? ' — ingestion is still running.' : '.'}
@@ -65,7 +65,7 @@ export default function CompanyLayout() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-8 py-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10">
       <header className="mb-6">
         <Link to="/companies" className="text-[12px] text-ink-muted hover:text-ink mb-2 inline-block">
           ← Companies
@@ -79,13 +79,13 @@ export default function CompanyLayout() {
         )}
       </header>
 
-      <nav className="flex gap-1 mb-8 border-b border-hairline">
+      <nav className="flex gap-1 mb-8 border-b border-hairline overflow-x-auto">
         {TABS.map((tab) => (
           <NavLink
             key={tab.to}
             to={tab.to}
             className={({ isActive }) =>
-              `px-3.5 py-2.5 text-[13px] font-medium border-b-2 -mb-px transition-colors ${
+              `px-3.5 py-2.5 text-[13px] font-medium border-b-2 -mb-px transition-colors whitespace-nowrap shrink-0 ${
                 isActive
                   ? 'border-series-1 text-ink'
                   : 'border-transparent text-ink-muted hover:text-ink-secondary hover:border-hairline'

@@ -320,7 +320,7 @@ export default function IntegratedScorecard({ loading, error, historical, signal
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
         {VALUATION_FACTOR_ORDER.map((key) => (
           <ValuationFactorDetail
             key={key} factorKey={key} factor={historical.factors[key]} factorZ={factorZs[key]}

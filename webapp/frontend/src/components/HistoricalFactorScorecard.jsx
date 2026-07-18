@@ -289,7 +289,7 @@ function MetricRow({ metricKey, metric, weight, onWeightChange }) {
 
       <MetricChart chart={metric.chart} metricKey={metricKey} />
 
-      <div className="grid grid-cols-4 gap-2 mt-2.5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2.5">
         <StatCell label="Current" value={formatMetric(metricKey, metric.current)} />
         <StatCell label="Normalized (12Q avg)" value={formatMetric(metricKey, metric.normalized)} />
         <StatCell

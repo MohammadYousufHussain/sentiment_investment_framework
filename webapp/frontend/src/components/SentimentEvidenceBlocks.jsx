@@ -48,7 +48,7 @@ function SentimentWindowBlock({ label, text, articles, ticker }) {
         </Link>
       </div>
       {text && <p className="text-[12px] text-ink-secondary leading-relaxed mb-3">{text}</p>}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <p className="text-[9px] uppercase tracking-wide text-ink-muted mb-1.5">Most bullish</p>
           <ArticleLink role="bullish" article={articles?.bullish} />
