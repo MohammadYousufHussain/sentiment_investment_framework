@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useParams } from 'react-router-dom'
-import { getCompanyDetail, getStageBStatus } from '../../lib/api'
+import { getCompanyDetail, getStageBStatus, triggerStageB } from '../../lib/api'
 
 const TABS = [
   { to: 'sentiment', label: 'Sentiment & News' },
@@ -10,6 +10,36 @@ const TABS = [
   { to: 'bull-bear-case', label: 'Bull / Bear Case' },
   { to: 'thesis', label: 'Investment Thesis' },
 ]
+
+function FetchNewsButton({ ticker, companyName, job, onStarted }) {
+  const [error, setError] = useState(null)
+  // Re-runs Stage B for this ticker. The layout's existing 3s status poll
+  // picks the job up, so `job` flipping to running is what disables us --
+  // no local "in flight" state to keep in sync.
+  const running = job?.status === 'running'
+
+  function start() {
+    setError(null)
+    triggerStageB([{ ticker, company_name: companyName ?? ticker }])
+      .then(() => onStarted?.())
+      .catch((err) => setError(err.message))
+  }
+
+  return (
+    <div className="text-right">
+      <button
+        onClick={start}
+        disabled={running}
+        className="rounded-md border border-hairline px-3.5 py-2 text-[12px] font-medium text-ink-secondary hover:text-ink hover:bg-panel disabled:opacity-60 disabled:cursor-default transition-colors"
+      >
+        {running
+          ? `Fetching latest news… (${Object.keys(job.sources ?? {}).length} sources done)`
+          : '↻ Fetch latest news'}
+      </button>
+      {error && <p className="text-[11px] text-critical mt-1">{error}</p>}
+    </div>
+  )
+}
 
 export default function CompanyLayout() {
   const { ticker } = useParams()
@@ -70,13 +100,18 @@ export default function CompanyLayout() {
         <Link to="/companies" className="text-[12px] text-ink-muted hover:text-ink mb-2 inline-block">
           ← Companies
         </Link>
-        <div className="flex items-baseline gap-3">
-          <h1 className="text-xl font-semibold tracking-tight font-mono">{ticker}</h1>
-          <span className="text-lg text-ink-secondary">{detail?.company_name}</span>
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+          <div>
+            <div className="flex items-baseline gap-3">
+              <h1 className="text-xl font-semibold tracking-tight font-mono">{ticker}</h1>
+              <span className="text-lg text-ink-secondary">{detail?.company_name}</span>
+            </div>
+            {detail?.themes?.length > 0 && (
+              <p className="text-[12px] text-ink-muted mt-1">Discovered via: {detail.themes.join(', ')}</p>
+            )}
+          </div>
+          <FetchNewsButton ticker={ticker} companyName={detail?.company_name} job={job} onStarted={refresh} />
         </div>
-        {detail?.themes?.length > 0 && (
-          <p className="text-[12px] text-ink-muted mt-1">Discovered via: {detail.themes.join(', ')}</p>
-        )}
       </header>
 
       <nav className="flex gap-1 mb-8 border-b border-hairline overflow-x-auto">

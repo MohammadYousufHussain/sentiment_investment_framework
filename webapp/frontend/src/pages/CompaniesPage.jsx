@@ -153,11 +153,7 @@ export default function CompaniesPage() {
       sourcesDone: Object.keys(job.sources || {}).length,
     }
   }
-  const rows = Object.values(byTicker).sort((a, b) => {
-    if (a.status === 'running' && b.status !== 'running') return -1
-    if (b.status === 'running' && a.status !== 'running') return 1
-    return (b.latest || '').localeCompare(a.latest || '')
-  })
+  const rows = Object.values(byTicker).sort((a, b) => a.ticker.localeCompare(b.ticker))
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10">
